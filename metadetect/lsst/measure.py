@@ -135,6 +135,7 @@ def detect_and_deblend(
     detection_config.reEstimateBackground = False
 
     detection_config.thresholdValue = thresh
+    detection_config.thresholdType = 'stdev'
 
     # these will be ignored when finding the image standard deviation
     detection_config.statsMask = util.get_stats_mask(detexp)
