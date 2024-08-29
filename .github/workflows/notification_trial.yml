@@ -11,9 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Announce event
-      run: echo ${{ github.event_name }}
+      run: |
+        echo ${{ github.event_name }}
+        echo ${{ github.event_name == 'pull_request' }}
     - name: failing step
       run: exit 1
+      continue-on-error: true
   on-failure:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'pull_request' && needs.failing-job.result == 'failure' }}
