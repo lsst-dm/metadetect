@@ -17,6 +17,7 @@ jobs:
     - name: failing step
       run: exit 1
       continue-on-error: true
+      fail_ci_if_error: true
   on-failure:
     runs-on: ubuntu-latest
     if: ${{ always() && needs.failing-job.result == 'failure' }}
