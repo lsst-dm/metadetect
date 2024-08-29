@@ -19,6 +19,7 @@ jobs:
     - name: Slack Notification
       uses: rtCamp/action-slack-notify@v2
       env:
-        MSG_MINIMAL: true
+        MSG_MINIMAL: actions_url
         SLACK_FOOTER: ""
+        SLACK_TITLE: LSST metadetect tests failing on lsst-dev
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
