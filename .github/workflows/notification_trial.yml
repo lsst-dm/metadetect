@@ -2,6 +2,8 @@ name: Failure Notification
 
 on:
   push:
+  schedule:
+    - cron: "0-58/2 * * * *"
 
 jobs:
   failing-job:
