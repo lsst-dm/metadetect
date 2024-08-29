@@ -13,7 +13,7 @@ jobs:
       run: exit 1
   on-failure:
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name == 'schedule' || github.event_name == 'pull_request') && needs.failing-job.result == 'failure' }}
+    if: ${{ (github.event_name == 'schedule' || github.event_name == 'pull_request' || github.event_name == 'push') && needs.failing-job.result == 'failure' }}
     needs:
       - failing-job
     steps:
@@ -25,3 +25,5 @@ jobs:
         SLACK_FOOTER: ""
         SLACK_TITLE: LSST metadetect tests failing on lsst-dev
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+    - name: Announce event
+      run: echo ${{ github.event_name }}
