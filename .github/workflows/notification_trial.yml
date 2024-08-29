@@ -11,7 +11,7 @@ jobs:
       run: exit 1
   on-failure:
     runs-on: ubuntu-latest
-    if: ${{ (github.event.schedule || github.event.push) && needs.failing-job.result == 'failure' }}
+    if: ${{ (github.event.schedule || github.event.push || github.event.pull_request) && needs.failing-job.result == 'failure' }}
     needs:
       - failing-job
     steps:
