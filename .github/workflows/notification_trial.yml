@@ -19,6 +19,6 @@ jobs:
     - name: Slack Notification
       uses: rtCamp/action-slack-notify@v2
       env:
-        SLACK_USERNAME: arunkannawadi-bot
-        SLACK_LINK_NAMES: arunkannawadi
+        MSG_MINIMAL: true
+        SLACK_FOOTER: ""
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
