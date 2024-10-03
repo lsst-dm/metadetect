@@ -797,7 +797,7 @@ def get_integer_center(wcs, bbox, as_double=False):
     return pixcen, skycen
 
 
-def get_stats_mask(exp):
+def get_stats_mask(exp=None):
     """
     Get a stats mask for use in getting image statistics.  If BRIGHT
     is found in the mask plane it is added to the usual
@@ -806,7 +806,7 @@ def get_stats_mask(exp):
 
     Parameters
     ----------
-    exp: lsst.afw.image.ExposureF
+    exp: lsst.afw.image.ExposureF, optional
         The exposure
 
     Returns
@@ -819,7 +819,7 @@ def get_stats_mask(exp):
 
     stats_mask = ['BAD', 'EDGE', 'DETECTED', 'DETECTED_NEGATIVE', 'NO_DATA']
 
-    if 'BRIGHT' in exp.mask.getMaskPlaneDict():
+    if exp is not None and 'BRIGHT' in exp.mask.getMaskPlaneDict():
         stats_mask += ['BRIGHT']
 
     return stats_mask
