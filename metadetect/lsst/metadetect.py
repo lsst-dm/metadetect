@@ -2,24 +2,29 @@ import logging
 import numpy as np
 import ngmix
 from ngmix.gexceptions import BootPSFFailure
-from lsst.pipe.base import Task
 from lsst.pex.config import (
     Config,
-    Field,
     ChoiceField,
     ConfigField,
     ConfigurableField,
+    Field,
     FieldValidationError,
     ListField,
 )
+from lsst.pipe.base import Task
 from lsst.meas.algorithms import SourceDetectionTask
 
 from .. import procflags
 
 from .skysub import subtract_sky_mbexp
 
-from .configs import get_config
-from .defaults import *
+from .defaults import (
+    DEFAULT_FWHM_REG,
+    DEFAULT_FWHM_SMOOTH,
+    DEFAULT_STAMP_SIZES,
+    DEFAULT_SUBTRACT_SKY,
+    DEFAULT_WEIGHT_FWHMS,
+)
 from . import measure
 from .metacal_exposures import get_metacal_mbexps_fixnoise
 from .util import get_integer_center, get_jacobian
@@ -242,7 +247,8 @@ class MetadetectTask(Task):
 
         # This is to support methods that are not yet refactored.
         config = self.config.toDict()
-        config['stamp_size'] = self.config.stamp_size  # Because this is a property, not a Field.
+        # Because this is a property and not a Field, we set this explicitly.
+        config['stamp_size'] = self.config.stamp_size
         config['detect']['thresh'] = self.detect.config.thresholdValue
 
         ormask = combine_ormasks(mbexp, ormasks)
@@ -287,6 +293,7 @@ class MetadetectTask(Task):
             result[shear_str] = res
 
         return result
+
 
 def detect_deblend_and_measure(
     mbexp,
