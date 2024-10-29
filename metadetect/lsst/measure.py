@@ -1,4 +1,5 @@
 import logging
+from unittest.mock import DEFAULT
 import warnings
 import numpy as np
 import esutil as eu
@@ -16,6 +17,16 @@ from lsst.pex.exceptions import (
     InvalidParameterError,
     LengthError,
 )
+from lsst.pex.config import (
+    Config,
+    ChoiceField,
+    ConfigField,
+    ConfigurableField,
+    Field,
+    FieldValidationError,
+    ListField,
+)
+from lsst.pipe.base import Task
 
 from ..procflags import (
     EDGE_HIT, ZERO_WEIGHTS, CENTROID_FAILURE, NO_ATTEMPT,
@@ -32,11 +43,164 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 LOG = logging.getLogger('lsst_measure')
 
 
+class DetectAndDeblendConfig(Config):
+    meas = ConfigurableField[SingleFrameMeasurementConfig](
+        doc="Measuremetn config",
+        target=SingleFrameMeasurementTask,
+    )
+    
+    detect=ConfigurableField[SourceDetectionConfig](
+        doc="Detection config",
+        target=SourceDetectionTask
+    )
+
+    deblend=ConfigurableField[SourceDeblendConfig](
+        doc="Deblend config",
+        target=SourceDeblendTask
+    )
+
+    thresh = Field[float](
+        doc="Threshold for detection",
+        default=DEFAULT_THRESH,
+    )
+
+    seed = Field[int](
+        doc="Random rng seed",
+        default=42,
+    )
+
+
+    def setDefaults(self):
+        super().setDefaults()
+
+        #defaults for measurement config
+        self.meas = SingleFrameMeasurementConfig()
+
+        self.meas.plugins.names = [
+            "base_SdssCentroid",
+            "base_PsfFlux",
+            "base_SkyCoord",
+        ]
+
+        # set these slots to none because we aren't running these algorithms
+        self.meas.slots.apFlux = None
+        self.meas.slots.gaussianFlux = None
+        self.meas.slots.calibFlux = None
+        self.meas.slots.modelFlux = None
+
+        # goes with SdssShape above
+        self.meas.slots.shape = None
+
+        # fix odd issue where it things things are near the edge
+        self.meas.plugins['base_SdssCentroid'].binmax = 1
+
+        ## defaults for detection config
+        self.detect = SourceDetectionConfig()
+
+        # DM does not have config default stability.  Set all of them explicitly
+        self.detect.minPixels = 1
+        self.detect.isotropicGrow = True
+        self.detect.combinedGrow = True
+        self.detect.nSigmaToGrow = 2.4
+        self.detect.returnOriginalFootprints = False
+        self.detect.includeThresholdMultiplier = 1.0
+        self.detect.thresholdPolarity = "positive"
+        self.detect.adjustBackground = 0.0
+        self.detect.reEstimateBackground = True
+        # these are ignored since we are doing reEstimateBackground = False
+        # detection_config.background
+        # detection_config.tempLocalBackground
+        # detection_config.doTempLocalBackground
+        # detection_config.tempWideBackground
+        # detection_config.doTempWideBackground
+        self.detect.nPeaksMaxSimple = 1
+        self.detect.nSigmaForKernel = 7.0
+        self.detect.excludeMaskPlanes = util.get_detection_mask()
+
+        # the defaults changed from from stdev to pixel_std but
+        # we don't want that
+
+        self.detect.thresholdType = "stdev"
+        # our changes from defaults
+        self.detect.reEstimateBackground = False
+
+        self.detect.thresholdValue = self.thresh
+
+        # these will be ignored when finding the image standard deviation
+        self.detect.statsMask = util.get_stats_mask()
+
+
+        # deblend config
+        # these tasks must use the same schema and all be constructed before any
+        # other tasks using the same schema are run because schema is modified in
+        # place by tasks, and the constructor does a check that fails if we do this
+        # afterward
+        self.deblend = SourceDeblendConfig()
+        self.deblend.maxFootprintArea = 0
+
+class DetectAndDeblendTask(Task):
+    ConfigClass = DetectAndDeblendConfig
+    _DefaultName = "detect_and_deblend"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.makeSubtask("meas")
+        self.makeSubtask("detect")
+        self.makeSubtask("deblend")
+        self.rng=np.random.RandomState(seed=self.config.seed)
+
+    def run(self, mbexp,show=False):
+        import lsst.afw.image as afw_image
+
+
+        if len(mbexp.singles) > 1:
+            detexp = util.coadd_exposures(mbexp.singles)
+            if detexp is None:
+                return [], None
+        else:
+            detexp = mbexp.singles[0]
+
+        # background measurement within the detection code requires ExposureF
+        if not isinstance(detexp, afw_image.ExposureF):
+            detexp = afw_image.ExposureF(detexp, deep=True)
+
+        schema = self.detect.schema # should be the same for all tasks
+        afw_table.CoordKey.addErrorFields(schema)
+        table = afw_table.SourceTable.make(schema)
+        result = self.detect.run(table, detexp)
+
+
+        if result is not None:
+            sources = result.sources
+            self.deblend.run(detexp, sources)
+
+            with ContextNoiseReplacer(detexp, sources, self.rng) as replacer:
+
+                for source in sources:
+
+                    if source.get('deblend_nChild') != 0:
+                        continue
+
+                    source_id = source.getId()
+
+                    with replacer.sourceInserted(source_id):
+                        self.meas.callMeasure(source, detexp)
+
+        else:
+            sources = []
+
+        if show:
+            vis.show_exp(detexp, use_mpl=True, sources=sources)
+
+        return sources, detexp
+
+
+
 def detect_and_deblend(
     mbexp,
-    rng,
-    thresh=DEFAULT_THRESH,
+    rng=None,
     show=False,
+    config=None,
 ):
     """
     run detection and deblending of peaks, as well as basic measurments such as
@@ -62,124 +226,29 @@ def detect_and_deblend(
     sources, detexp
         The sources and the detection exposure
     """
-    import lsst.afw.image as afw_image
+    config_override = config if config is not None else {}
+    detect_and_deblend_config = DetectAndDeblendConfig()
+    detect_and_deblend_config.setDefaults()
 
-    if len(mbexp.singles) > 1:
-        detexp = util.coadd_exposures(mbexp.singles)
-        if detexp is None:
-            return [], None
-    else:
-        detexp = mbexp.singles[0]
+    for key, value in config_override.items():
+        if key == "detect":
+            for subkey, subvalue in value.items():
+                setattr(config.detect, subkey, subvalue)
+        elif key == "meas":
+            for subkey, subvalue in value.items():
+                setattr(config.meas, subkey, subvalue)
+        elif key == "deblend":
+            for subkey, subvalue in value.items():
+                setattr(config.deblend, subkey, subvalue)
+        else: 
+            setattr(config, key, value)
 
-    # background measurement within the detection code requires ExposureF
-    if not isinstance(detexp, afw_image.ExposureF):
-        detexp = afw_image.ExposureF(detexp, deep=True)
-
-    schema = afw_table.SourceTable.makeMinimalSchema()
-
-    # Setup algorithms to run
-    meas_config = SingleFrameMeasurementConfig()
-    meas_config.plugins.names = [
-        "base_SdssCentroid",
-        "base_PsfFlux",
-        "base_SkyCoord",
-    ]
-
-    # set these slots to none because we aren't running these algorithms
-    meas_config.slots.apFlux = None
-    meas_config.slots.gaussianFlux = None
-    meas_config.slots.calibFlux = None
-    meas_config.slots.modelFlux = None
-
-    # goes with SdssShape above
-    meas_config.slots.shape = None
-
-    # fix odd issue where it things things are near the edge
-    meas_config.plugins['base_SdssCentroid'].binmax = 1
-
-    meas_task = SingleFrameMeasurementTask(
-        config=meas_config,
-        schema=schema,
-    )
-    # avoids a warning spamming for every object
-    afw_table.CoordKey.addErrorFields(schema)
-
-    detection_config = SourceDetectionConfig()
-
-    # DM does not have config default stability.  Set all of them explicitly
-    detection_config.minPixels = 1
-    detection_config.isotropicGrow = True
-    detection_config.combinedGrow = True
-    detection_config.nSigmaToGrow = 2.4
-    detection_config.returnOriginalFootprints = False
-    detection_config.includeThresholdMultiplier = 1.0
-    detection_config.thresholdPolarity = "positive"
-    detection_config.adjustBackground = 0.0
-    detection_config.reEstimateBackground = True
-    # these are ignored since we are doing reEstimateBackground = False
-    # detection_config.background
-    # detection_config.tempLocalBackground
-    # detection_config.doTempLocalBackground
-    # detection_config.tempWideBackground
-    # detection_config.doTempWideBackground
-
-    detection_config.nPeaksMaxSimple = 1
-    detection_config.nSigmaForKernel = 7.0
-    detection_config.excludeMaskPlanes = util.get_detection_mask(detexp)
-
-    # the defaults changed from from stdev to pixel_std but
-    # we don't want that
-
-    detection_config.thresholdType = "stdev"
-    # our changes from defaults
-    detection_config.reEstimateBackground = False
-
-    detection_config.thresholdValue = thresh
-    detection_config.thresholdType = 'stdev'
-
-    # these will be ignored when finding the image standard deviation
-    detection_config.statsMask = util.get_stats_mask(detexp)
-
-    detection_task = SourceDetectionTask(config=detection_config)
-
-    # these tasks must use the same schema and all be constructed before any
-    # other tasks using the same schema are run because schema is modified in
-    # place by tasks, and the constructor does a check that fails if we do this
-    # afterward
-    deblend_config = SourceDeblendConfig()
-    deblend_config.maxFootprintArea = 0
-    deblend_task = SourceDeblendTask(
-        config=deblend_config,
-        schema=schema,
-    )
-
-    table = afw_table.SourceTable.make(schema)
-
-    result = detection_task.run(table, detexp)
-
-    if result is not None:
-        sources = result.sources
-        deblend_task.run(detexp, sources)
-
-        with ContextNoiseReplacer(detexp, sources, rng) as replacer:
-
-            for source in sources:
-
-                if source.get('deblend_nChild') != 0:
-                    continue
-
-                source_id = source.getId()
-
-                with replacer.sourceInserted(source_id):
-                    meas_task.callMeasure(source, detexp)
-
-    else:
-        sources = []
-
-    if show:
-        vis.show_exp(detexp, use_mpl=True, sources=sources)
-
-    return sources, detexp
+    config.freeze()
+    config.validate()
+    task = DetectAndDeblendTask(config=config)
+    if rng is not None:
+        task.rng = rng
+    return task.run(mbexp, show)
 
 
 def measure(
