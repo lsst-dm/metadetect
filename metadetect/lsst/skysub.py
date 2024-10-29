@@ -199,6 +199,9 @@ def iterate_detection_and_skysub(
         raise ValueError(f'niter {niter} is less than 1')
     
     config_override = config if config is not None else {}
+
+    # set threshold
+    config_override['detect'] = {} 
     config_override['detect']['thresholdValue'] = thresh
 
     if niter: 
