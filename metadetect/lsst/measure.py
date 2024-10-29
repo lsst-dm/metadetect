@@ -44,7 +44,7 @@ class DetectAndDeblendConfig(Config):
         target=SingleFrameMeasurementTask,
     )
 
-    detec = ConfigurableField[SourceDetectionConfig](
+    detect = ConfigurableField[SourceDetectionConfig](
         doc="Detection config",
         target=SourceDetectionTask
     )
