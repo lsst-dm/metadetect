@@ -62,16 +62,16 @@ class IterateDetectionSkySubTask(Task):
     def run(self, exposure):
         from lsst.pex.exceptions import RuntimeError as LSSTRuntimeError
         from lsst.pipe.base.task import TaskError
-        if self.niter < 1:
-            raise ValueError(f'niter {self.niter} is less than 1')
+        if self.config.niter < 1:
+            raise ValueError(f'niter {self.config.niter} is less than 1')
 
-        schema = self.detect.schema # same for every task
+        schema = afw_table.SourceTable.makeMinimalSchema()
         table = afw_table.SourceTable.make(schema)
 
         # keep a running sum of each sky that was subtracted
         try:
             sky_meas = 0.0
-            for i in range(self.niter):
+            for i in range(self.config.niter):
                 self.back.run(exposure)
                 result = self.detect.run(table, exposure)
 
