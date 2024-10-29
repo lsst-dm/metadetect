@@ -230,7 +230,8 @@ def detect_and_deblend(
     """
     config_override = config if config is not None else {}
     if thresh:
-        config_override['detect'] = {} 
+        if 'detect' not in config_override:
+            config_override['detect'] = {} 
         config_override['detect']['thresholdValue'] = thresh
 
     config = DetectAndDeblendConfig()

@@ -154,6 +154,10 @@ def subtract_sky_mbexp(mbexp, thresh=DEFAULT_THRESH, config=None):
     config_override = config if config is not None else {}
 
     if thresh:
+        if not 'iterate_detection_and_skysub' in config_override:
+            config_override['iterate_detection_and_skysub'] = {} 
+        if not 'detect' in config_override['iterate_detection_and_skysub']:
+            config_override['iterate_detection_and_skysub']['detect'] = {}
         config_override['iterate_detection_and_skysub']['detect']['thresholdValue'] = thresh
 
     config = SubtractSkyMbExpConfig()
@@ -201,7 +205,8 @@ def iterate_detection_and_skysub(
     config_override = config if config is not None else {}
 
     # set threshold
-    config_override['detect'] = {} 
+    if 'detect' not in config_override:
+        config_override['detect'] = {} 
     config_override['detect']['thresholdValue'] = thresh
 
     if niter: 
