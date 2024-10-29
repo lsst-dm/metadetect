@@ -200,6 +200,7 @@ class DetectAndDeblendTask(Task):
 def detect_and_deblend(
     mbexp,
     rng=None,
+    thresh=DEFAULT_THRESH,
     show=False,
     config=None,
 ):
@@ -228,8 +229,13 @@ def detect_and_deblend(
         The sources and the detection exposure
     """
     config_override = config if config is not None else {}
-    detect_and_deblend_config = DetectAndDeblendConfig()
-    detect_and_deblend_config.setDefaults()
+    if thresh:
+        config_override['detect'] = {} 
+        config_override['detect']['thresholdValue'] = thresh
+
+    config = DetectAndDeblendConfig()
+    config.setDefaults()
+
 
     for key, value in config_override.items():
         if key == "detect":
