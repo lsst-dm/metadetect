@@ -237,19 +237,7 @@ def detect_and_deblend(
     config = DetectAndDeblendConfig()
     config.setDefaults()
 
-
-    for key, value in config_override.items():
-        if key == "detect":
-            for subkey, subvalue in value.items():
-                setattr(config.detect, subkey, subvalue)
-        elif key == "meas":
-            for subkey, subvalue in value.items():
-                setattr(config.meas, subkey, subvalue)
-        elif key == "deblend":
-            for subkey, subvalue in value.items():
-                setattr(config.deblend, subkey, subvalue)
-        else: 
-            setattr(config, key, value)
+    util.override_config(config, config_override)
 
     config.freeze()
     config.validate()
