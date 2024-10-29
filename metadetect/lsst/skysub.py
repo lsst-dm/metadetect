@@ -163,18 +163,12 @@ def subtract_sky_mbexp(mbexp, thresh=DEFAULT_THRESH, config=None):
     config = SubtractSkyMbExpConfig()
     config.setDefaults()
 
-    for key, value in config_override.items():
-        if key == "iterate_detection_and_skysub":
-           for subkey, subvalue in value.items():
-                setattr(config.iterate_detection_and_skysub, subkey, subvalue)
-        else: 
-            setattr(config, key, value)
+    util.override_config(config, config_override)
 
     config.freeze()
     config.validate()
     task = SubtractSkyMbExpTask(config=config)
-    for exp in mbexp:
-        task.run(exposure=exp)
+    task.run(mbexp=mbexp)
 
 
 def iterate_detection_and_skysub(
@@ -215,15 +209,7 @@ def iterate_detection_and_skysub(
     config = IterateDetectionSkySubConfig()
     config.setDefaults()
 
-    for key, value in config_override.items():
-        if key == "detect":
-            for subkey, subvalue in value.items():
-                setattr(config.detect, subkey, subvalue)
-        elif key == "back":
-            for subkey, subvalue in value.items():
-                setattr(config.back, subkey, subvalue)
-        else: 
-            setattr(config, key, value)
+    util.override_config(config, config_override)
 
     task = IterateDetectionSkySubTask(config=config)
     result  = task.run(exposure)
