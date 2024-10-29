@@ -149,7 +149,7 @@ class DetectAndDeblendTask(Task):
         self.makeSubtask("deblend")
         self.rng=np.random.RandomState(seed=self.config.seed)
 
-    def run(self, mbexp,show=False):
+    def run(self, mbexp, show=False):
         import lsst.afw.image as afw_image
 
 
