@@ -112,7 +112,7 @@ class SubtractSkyMbExpConfig(Config):
     def setDefaults(self):
         self.iterate_detection_and_skysub = IterateDetectionSkySubConfig()
 
-        # TODO: Does this propagate appropriately?
+        # TODO: Does this propagate appropriately to the detect task?
         self.iterate_detection_and_skysub.thresh = DEFAULT_THRESH 
         self.iterate_detection_and_skysub.niter = 2
 
