@@ -5,15 +5,7 @@ from lsst.meas.algorithms import (
     SourceDetectionTask,
     SourceDetectionConfig,
 )
-from lsst.pex.config import (
-    Config,
-    ChoiceField,
-    ConfigField,
-    ConfigurableField,
-    Field,
-    FieldValidationError,
-    ListField,
-)
+from lsst.pex.config import Config, ConfigurableField, Field
 from lsst.pipe.base import Task
 
 
@@ -27,12 +19,12 @@ class IterateDetectionSkySubConfig(Config):
         default=2,
     )
 
-    detect=ConfigurableField[SourceDetectionConfig](
+    detect = ConfigurableField[SourceDetectionConfig](
         doc="Detection config",
         target=SourceDetectionTask
     )
 
-    back=ConfigurableField[SubtractBackgroundConfig](
+    back = ConfigurableField[SubtractBackgroundConfig](
         doc="Subtract background config",
         target=SubtractBackgroundTask
     )
@@ -94,7 +86,7 @@ class IterateDetectionSkySubTask(Task):
 
 
 class SubtractSkyMbExpConfig(Config):
-    iterate_detection_and_skysub=ConfigurableField[IterateDetectionSkySubConfig](
+    iterate_detection_and_skysub = ConfigurableField[IterateDetectionSkySubConfig](
         doc="Iterate detection and sky subtraction config",
         target=IterateDetectionSkySubTask
     )
@@ -103,7 +95,7 @@ class SubtractSkyMbExpConfig(Config):
         super().setDefaults()
         self.iterate_detection_and_skysub = IterateDetectionSkySubConfig()
 
-        self.iterate_detection_and_skysub.detect.thresholdValue = DEFAULT_THRESH 
+        self.iterate_detection_and_skysub.detect.thresholdValue = DEFAULT_THRESH
         self.iterate_detection_and_skysub.niter = 2
 
 
@@ -154,11 +146,13 @@ def subtract_sky_mbexp(mbexp, thresh=DEFAULT_THRESH, config=None):
     config_override = config if config is not None else {}
 
     if thresh:
-        if not 'iterate_detection_and_skysub' in config_override:
-            config_override['iterate_detection_and_skysub'] = {} 
-        if not 'detect' in config_override['iterate_detection_and_skysub']:
+        if 'iterate_detection_and_skysub' not in config_override:
+            config_override['iterate_detection_and_skysub'] = {}
+        if 'detect' not in config_override['iterate_detection_and_skysub']:
             config_override['iterate_detection_and_skysub']['detect'] = {}
-        config_override['iterate_detection_and_skysub']['detect']['thresholdValue'] = thresh
+
+        detect_override = config_override['iterate_detection_and_skysub']['detect']
+        detect_override['thresholdValue'] = thresh
 
     config = SubtractSkyMbExpConfig()
     config.setDefaults()
@@ -191,19 +185,17 @@ def iterate_detection_and_skysub(
     -------
     Result from running the detection task
     """
-    from lsst.pex.exceptions import RuntimeError as LSSTRuntimeError
-    from lsst.pipe.base.task import TaskError
     if niter < 1:
         raise ValueError(f'niter {niter} is less than 1')
-    
+
     config_override = config if config is not None else {}
 
     # set threshold
     if 'detect' not in config_override:
-        config_override['detect'] = {} 
+        config_override['detect'] = {}
     config_override['detect']['thresholdValue'] = thresh
 
-    if niter: 
+    if niter:
         config_override['niter'] = niter
 
     config = IterateDetectionSkySubConfig()
@@ -212,5 +204,5 @@ def iterate_detection_and_skysub(
     util.override_config(config, config_override)
 
     task = IterateDetectionSkySubTask(config=config)
-    result  = task.run(exposure)
+    result = task.run(exposure)
     return result
