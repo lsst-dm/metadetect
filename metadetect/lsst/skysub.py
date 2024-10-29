@@ -5,9 +5,129 @@ from lsst.meas.algorithms import (
     SourceDetectionTask,
     SourceDetectionConfig,
 )
+from lsst.pex.config import (
+    Config,
+    ChoiceField,
+    ConfigField,
+    ConfigurableField,
+    Field,
+    FieldValidationError,
+    ListField,
+)
+from lsst.pipe.base import Task
+
 
 from .defaults import DEFAULT_THRESH
 from . import util
+
+
+class IterateDetectionSkySubConfig(Config):
+    niter = Field[int](
+        doc="Number of iterations",
+        default=2,
+    )
+
+    thresh = Field[float](
+        doc="Theshold for detection",
+        default=DEFAULT_THRESH
+    )
+
+    detect=ConfigurableField[SourceDetectionConfig](
+        doc="Detection config",
+        target=SourceDetectionTask
+    )
+
+    back=ConfigurableField[SubtractBackgroundConfig](
+        doc="Subtract background config",
+        target=SubtractBackgroundTask
+    )
+
+    def setDefaults(self):
+        super().setDefaults()
+
+        # detection
+        self.detect = SourceDetectionConfig()
+        self.detect.reEstimateBackground = False
+        self.detect.thresholdValue = DEFAULT_THRESH
+
+        # background subtraction
+        bp_to_skip = util.get_stats_mask()
+        self.back = SubtractBackgroundConfig(ignoredPixelMask=bp_to_skip)
+
+
+class IterateDetectionSkySubTask(Task):
+    ConfigClass = IterateDetectionSkySubConfig
+    _DefaultName = "iterate_detection_and_skysub"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.makeSubtask("detect")
+        self.makeSubtask("back")
+
+    def run(self, exposure):
+        from lsst.pex.exceptions import RuntimeError as LSSTRuntimeError
+        from lsst.pipe.base.task import TaskError
+        if self.niter < 1:
+            raise ValueError(f'niter {self.niter} is less than 1')
+
+        schema = self.detect.schema # same for every task
+        table = afw_table.SourceTable.make(schema)
+
+        # keep a running sum of each sky that was subtracted
+        try:
+            sky_meas = 0.0
+            for i in range(self.niter):
+                self.back.run(exposure)
+                result = self.detect.run(table, exposure)
+
+                sky_meas += exposure.getMetadata()['BGMEAN']
+
+            meta = exposure.getMetadata()
+
+            # this is the overall sky we subtracted in all iterations
+            meta['BGMEAN'] = sky_meas
+        except LSSTRuntimeError as err:
+            err = str(err).replace('lsst::pex::exceptions::RuntimeError:', '')
+            self.detect.log.warn(err)
+            result = None
+        except TaskError as err:
+            err = str(err).replace('lsst.pipe.base.task.TaskError:', '')
+            self.detect.log.warn(err)
+            result = None
+
+        return result
+
+
+class SubtractSkyMbExpConfig(Config):
+    iterate_detection_and_skysub=ConfigurableField[IterateDetectionSkySubConfig](
+        doc="Iterate detection and sky subtraction config",
+        target=IterateDetectionSkySubTask
+    )
+
+    thresh = Field[float](
+        doc="Theshold for detection",
+        default=DEFAULT_THRESH
+    )
+
+    def setDefaults(self):
+        self.iterate_detection_and_skysub = IterateDetectionSkySubConfig()
+
+        # TODO: Does this propagate appropriately?
+        self.iterate_detection_and_skysub.thresh = DEFAULT_THRESH 
+        self.iterate_detection_and_skysub.niter = 2
+
+
+class SubtractSkyMbExpTask(Task):
+    ConfigClass = SubtractSkyMbExpConfig
+    _DefaultName = "subtract_sky_mbexp"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.makeSubtask("iterate_detection_and_skysub")
+
+    def run(self, mbexp):
+        for exp in mbexp:
+            self.iterate_detection_and_skysub.run(exposure=exp)
 
 
 def determine_and_subtract_sky(exp):
@@ -30,7 +150,7 @@ def determine_and_subtract_sky(exp):
     return background
 
 
-def subtract_sky_mbexp(mbexp, thresh=DEFAULT_THRESH):
+def subtract_sky_mbexp(mbexp, thresh=DEFAULT_THRESH, config=None):
     """
     subtract sky
 
@@ -41,15 +161,30 @@ def subtract_sky_mbexp(mbexp, thresh=DEFAULT_THRESH):
     thresh: float
         Threshold for detection
     """
+    config_override = config if config is not None else {}
+
+    if thresh:
+        config_override['thresh'] = thresh
+
+    config = SubtractSkyMbExpConfig()
+    config.setDefaults()
+
+    for key, value in config_override.items():
+        if key == "iterate_detection_and_skysub":
+           for subkey, subvalue in value.items():
+                setattr(config.iterate_detection_and_skysub, subkey, subvalue)
+        else: 
+            setattr(config, key, value)
+
+    config.freeze()
+    config.validate()
+    task = SubtractSkyMbExpTask(config=config)
     for exp in mbexp:
-        iterate_detection_and_skysub(
-            exposure=exp,
-            thresh=thresh,
-        )
+        task.run(exposure=exp)
 
 
 def iterate_detection_and_skysub(
-    exposure, thresh, niter=2,
+    exposure, thresh, niter=2, config=None
 ):
     """
     Iterate detection and sky subtraction
@@ -72,35 +207,26 @@ def iterate_detection_and_skysub(
     from lsst.pipe.base.task import TaskError
     if niter < 1:
         raise ValueError(f'niter {niter} is less than 1')
+    
+    config_override = config if config is not None else {}
+    config_override['thresh'] = thresh
 
-    schema = afw_table.SourceTable.makeMinimalSchema()
-    detection_config = SourceDetectionConfig()
-    detection_config.reEstimateBackground = False
-    detection_config.thresholdValue = thresh
-    detection_task = SourceDetectionTask(config=detection_config)
+    if niter: 
+        config_override['niter'] = niter
 
-    table = afw_table.SourceTable.make(schema)
+    config = IterateDetectionSkySubConfig()
+    config.setDefaults()
 
-    # keep a running sum of each sky that was subtracted
-    try:
-        sky_meas = 0.0
-        for i in range(niter):
-            determine_and_subtract_sky(exposure)
-            result = detection_task.run(table, exposure)
+    for key, value in config_override.items():
+        if key == "detect":
+            for subkey, subvalue in value.items():
+                setattr(config.detect, subkey, subvalue)
+        elif key == "back":
+            for subkey, subvalue in value.items():
+                setattr(config.back, subkey, subvalue)
+        else: 
+            setattr(config, key, value)
 
-            sky_meas += exposure.getMetadata()['BGMEAN']
-
-        meta = exposure.getMetadata()
-
-        # this is the overall sky we subtracted in all iterations
-        meta['BGMEAN'] = sky_meas
-    except LSSTRuntimeError as err:
-        err = str(err).replace('lsst::pex::exceptions::RuntimeError:', '')
-        detection_task.log.warn(err)
-        result = None
-    except TaskError as err:
-        err = str(err).replace('lsst.pipe.base.task.TaskError:', '')
-        detection_task.log.warn(err)
-        result = None
-
+    task = IterateDetectionSkySubTask(config=config)
+    result  = task.run(exposure)
     return result
