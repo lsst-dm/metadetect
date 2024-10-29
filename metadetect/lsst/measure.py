@@ -144,9 +144,10 @@ class DetectAndDeblendTask(Task):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.makeSubtask("meas")
-        self.makeSubtask("detect")
-        self.makeSubtask("deblend")
+        schema = afw_table.SourceTable.makeMinimalSchema()
+        self.makeSubtask("meas", schema=schema)
+        self.makeSubtask("detect", schema=schema)
+        self.makeSubtask("deblend", schema=schema)
         self.rng=np.random.RandomState(seed=self.config.seed)
 
     def run(self, mbexp, show=False):
@@ -164,7 +165,7 @@ class DetectAndDeblendTask(Task):
         if not isinstance(detexp, afw_image.ExposureF):
             detexp = afw_image.ExposureF(detexp, deep=True)
 
-        schema = self.detect.schema # should be the same for all tasks
+        schema = self.deblend.schema # should be the same for all tasks
         afw_table.CoordKey.addErrorFields(schema)
         table = afw_table.SourceTable.make(schema)
         result = self.detect.run(table, detexp)
