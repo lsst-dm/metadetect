@@ -27,11 +27,6 @@ class IterateDetectionSkySubConfig(Config):
         default=2,
     )
 
-    thresh = Field[float](
-        doc="Theshold for detection",
-        default=DEFAULT_THRESH
-    )
-
     detect=ConfigurableField[SourceDetectionConfig](
         doc="Detection config",
         target=SourceDetectionTask
@@ -104,16 +99,11 @@ class SubtractSkyMbExpConfig(Config):
         target=IterateDetectionSkySubTask
     )
 
-    thresh = Field[float](
-        doc="Theshold for detection",
-        default=DEFAULT_THRESH
-    )
-
     def setDefaults(self):
+        super().setDefaults()
         self.iterate_detection_and_skysub = IterateDetectionSkySubConfig()
 
-        # TODO: Does this propagate appropriately to the detect task?
-        self.iterate_detection_and_skysub.thresh = DEFAULT_THRESH 
+        self.iterate_detection_and_skysub.detect.thresholdValue = DEFAULT_THRESH 
         self.iterate_detection_and_skysub.niter = 2
 
 
@@ -164,7 +154,7 @@ def subtract_sky_mbexp(mbexp, thresh=DEFAULT_THRESH, config=None):
     config_override = config if config is not None else {}
 
     if thresh:
-        config_override['thresh'] = thresh
+        config_override['iterate_detection_and_skysub']['detect']['thresholdValue'] = thresh
 
     config = SubtractSkyMbExpConfig()
     config.setDefaults()
@@ -209,7 +199,7 @@ def iterate_detection_and_skysub(
         raise ValueError(f'niter {niter} is less than 1')
     
     config_override = config if config is not None else {}
-    config_override['thresh'] = thresh
+    config_override['detect']['thresholdValue'] = thresh
 
     if niter: 
         config_override['niter'] = niter
