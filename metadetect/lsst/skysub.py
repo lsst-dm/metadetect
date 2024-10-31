@@ -33,7 +33,6 @@ class IterateDetectionSkySubConfig(Config):
         super().setDefaults()
 
         # detection
-        self.detect = SourceDetectionConfig()
         self.detect.reEstimateBackground = False
         self.detect.thresholdValue = DEFAULT_THRESH
 
@@ -93,7 +92,6 @@ class SubtractSkyMbExpConfig(Config):
 
     def setDefaults(self):
         super().setDefaults()
-        self.iterate_detection_and_skysub = IterateDetectionSkySubConfig()
 
         self.iterate_detection_and_skysub.detect.thresholdValue = DEFAULT_THRESH
         self.iterate_detection_and_skysub.niter = 2
