@@ -68,8 +68,6 @@ class DetectAndDeblendConfig(Config):
         super().setDefaults()
 
         # defaults for measurement config
-        self.meas = SingleFrameMeasurementConfig()
-
         self.meas.plugins.names = [
             "base_SdssCentroid",
             "base_PsfFlux",

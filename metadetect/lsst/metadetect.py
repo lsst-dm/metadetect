@@ -209,11 +209,8 @@ class MetadetectConfig(Config):
 
         # self.stamp_size = DEFAULT_STAMP_SIZES[self.meas_type]
 
-        self.weight = WeightConfig()
         self.weight.fwhm = DEFAULT_WEIGHT_FWHMS.get(self.meas_type, None)
 
-        self.psf = PsfConfig()
-        self.metacal = MetacalConfig()
 
     def validate(self):
         super().validate()
