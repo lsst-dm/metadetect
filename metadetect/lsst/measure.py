@@ -40,7 +40,7 @@ LOG = logging.getLogger('lsst_measure')
 
 class DetectAndDeblendConfig(Config):
     meas = ConfigurableField[SingleFrameMeasurementConfig](
-        doc="Measuremetn config",
+        doc="Measurement config",
         target=SingleFrameMeasurementTask,
     )
 
