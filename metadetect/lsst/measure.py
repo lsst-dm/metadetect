@@ -89,8 +89,6 @@ class DetectAndDeblendConfig(Config):
         self.meas.plugins['base_SdssCentroid'].binmax = 1
 
         # defaults for detection config
-        self.detect = SourceDetectionConfig()
-
         # DM does not have config default stability.  Set all of them explicitly
         self.detect.minPixels = 1
         self.detect.isotropicGrow = True
@@ -128,7 +126,6 @@ class DetectAndDeblendConfig(Config):
         # other tasks using the same schema are run because schema is modified in
         # place by tasks, and the constructor does a check that fails if we do this
         # afterward
-        self.deblend = SourceDeblendConfig()
         self.deblend.maxFootprintArea = 0
 
 
