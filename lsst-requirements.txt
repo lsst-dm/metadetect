@@ -5,5 +5,6 @@ fitsio>=1.0
 pyyaml
 numba>0.54.0
 esutil
+meds  # This should go away
 #ngmix>=2.0.3
 scipy
