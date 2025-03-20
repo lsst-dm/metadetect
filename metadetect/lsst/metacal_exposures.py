@@ -69,7 +69,7 @@ def get_metacal_mbexps(mbexp, types=None, rot=False):
     for shear_type in types:
         mdict_with_explists[shear_type] = []
 
-    for iband, band in enumerate(mbexp.bands):
+    for iband, band in enumerate(mbexp.filters):
         exp = mbexp[band]
 
         this_mdict = get_metacal_exps(exp, types=types, rot=rot)
