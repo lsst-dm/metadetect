@@ -6,5 +6,5 @@ pyyaml
 numba>0.54.0
 esutil
 meds  # This should go away
-#ngmix>=2.0.3
+ngmix>=2.0.3
 scipy
