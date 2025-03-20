@@ -1,0 +1,9 @@
+numpy
+scipy
+galsim
+fitsio>=1.0
+pyyaml
+numba>0.54.0
+esutil
+ngmix>=2.0.3
+scipy
