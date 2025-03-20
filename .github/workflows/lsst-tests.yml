@@ -11,7 +11,7 @@ jobs:
     name: lsst-tests
     strategy:
       matrix:
-        pyver: ["3.11"]
+        pyver: ["3.12"]
 
     runs-on: "ubuntu-latest"
 
@@ -35,7 +35,7 @@ jobs:
         shell: bash -l {0}
         run: |
           conda config --set always_yes yes
-          conda install --quiet --yes --file requirements.txt
+          conda install --quiet --yes --file lsst-requirements.txt
           conda install --quiet --yes --file dev-requirements.txt
           conda install -q -y stackvana=0 lsstdesc-weaklensingdeblending
 
