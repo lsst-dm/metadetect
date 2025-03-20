@@ -39,6 +39,7 @@ jobs:
           conda install --quiet --yes --file dev-requirements.txt
           conda install -q -y stackvana=0 lsstdesc-weaklensingdeblending
 
+          pip install git+https://github.com/arunkannawadi/ngmix@u/arunkannawadi/np2
           pip install --no-deps git+https://github.com/LSSTDESC/descwl-shear-sims.git
           pip install --no-deps git+https://github.com/LSSTDESC/descwl_coadd.git
 
