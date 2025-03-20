@@ -301,8 +301,8 @@ def get_mbexp(exposures):
     """
     from lsst.afw.image import MultibandExposure
 
-    filters = [exp.getFilter().bandLabel for exp in exposures]
-    mbexp = MultibandExposure.fromExposures(filters, exposures)
+    bands = [exp.getFilter().bandLabel for exp in exposures]
+    mbexp = MultibandExposure.fromExposures(bands, exposures)
 
     for exp, sexp in zip(exposures, mbexp.singles):
         sexp.setFilter(exp.getFilter())
@@ -332,7 +332,7 @@ def copy_mbexp(mbexp, clear=False):
     new_mbexp = mbexp.clone()
 
     # clone does not copy the psfs
-    for band in mbexp.filters:
+    for band in mbexp.bands:
         psf = try_clone_psf(mbexp[band].getPsf())
         new_mbexp[band].setPsf(psf)
 
