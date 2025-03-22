@@ -116,6 +116,7 @@ def detect_and_deblend(
     detection_config.thresholdPolarity = "positive"
     detection_config.adjustBackground = 0.0
     detection_config.reEstimateBackground = True
+    detection_config.doApplyFlatBackgroundRatio = False
     # these are ignored since we are doing reEstimateBackground = False
     # detection_config.background
     # detection_config.tempLocalBackground

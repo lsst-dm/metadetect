@@ -22,7 +22,8 @@ def test_detect_config():
         'nPeaksMaxSimple',
         'nSigmaForKernel',
         'statsMask',
-        'excludeMaskPlanes'
+        'excludeMaskPlanes',
+        'doAApplyFlatBackgroundRatio',
     ]
 
     config = SourceDetectionConfig()
