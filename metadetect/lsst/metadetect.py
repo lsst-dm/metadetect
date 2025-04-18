@@ -204,6 +204,10 @@ class MetadetectConfig(Config):
         # by changing the DEFAULT_STAMP_SIZES.
         return DEFAULT_STAMP_SIZES[self.meas_type]
 
+    @stamp_size.setter
+    def stamp_size(self, value):
+	self.stamp_size = value
+
     def setDefaults(self):
         super().setDefaults()
         self.weight.fwhm = DEFAULT_WEIGHT_FWHMS.get(self.meas_type, None)
