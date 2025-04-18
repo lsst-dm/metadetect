@@ -206,7 +206,7 @@ class MetadetectConfig(Config):
 
     @stamp_size.setter
     def stamp_size(self, value):
-	self.stamp_size = value
+        self.stamp_size = value
 
     def setDefaults(self):
         super().setDefaults()
