@@ -79,7 +79,7 @@ def run_metadetect(
     config = MetadetectConfig()
     config.setDefaults()
 
-    override_config(config, config_override)
+    # override_config(config, config_override)
 
     config.freeze()
     config.validate()
