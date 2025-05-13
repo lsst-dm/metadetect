@@ -152,7 +152,8 @@ class MetacalConfig(Config):
     )
     types = ListField[str](
         doc="List of artificial shears to apply.",
-        default=["noshear", "1p", "1m",],
+        # default=["noshear", "1p", "1m",],
+        default=["noshear", "1p", "1m", "2p", "2m"], # temporary override
     )
 
     def validate(self):
