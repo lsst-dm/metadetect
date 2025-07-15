@@ -158,7 +158,7 @@ class DetectAndDeblendTask(Task):
             detexp = afw_image.ExposureF(detexp, deep=True)
 
         schema = self.deblend.schema  # should be the same for all tasks
-        afw_table.CoordKey.addErrorFields(schema)
+        # afw_table.CoordKey.addErrorFields(schema)
         table = afw_table.SourceTable.make(schema)
         result = self.detect.run(table, detexp)
 
