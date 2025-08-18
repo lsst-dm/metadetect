@@ -6,8 +6,8 @@ codecov:
 coverage:
   precision: 2
   round: down
-  range: 65...85
-  # Coverage below 65% is flagged red, and above 85% is green.
+  range: 65...90
+  # Coverage below 65% is flagged red, and above 90% is green.
 
   status:
     project:
